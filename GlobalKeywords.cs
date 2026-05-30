@@ -42,6 +42,22 @@ namespace CodeScannerApp
             @"https?://[^\s""']+"                 // URL
         };
 
+        public static List<string> XorIndicators = new()
+        {
+            "xor",
+            "^",
+            "0x",
+            "0xFF",
+            "0xAA",
+            "0x55",
+            "byte[] xor",
+            "xor decrypt",
+            "xor encode",
+            "xor key",
+            "xor loop"
+        };
+
+
         // ⭐ NEW METHOD: Loop through all keyword lists
         public static List<string> ScanLine(string line)
         {
@@ -70,6 +86,35 @@ namespace CodeScannerApp
                 if (Regex.IsMatch(line, pattern))
                     findings.Add($"Pattern match: {pattern}");
             }
+
+            // 4. XOR indicators
+            foreach (var xor in XorIndicators)
+            {
+                if (line.Contains(xor, StringComparison.OrdinalIgnoreCase))
+                    findings.Add($"XOR indicator: {xor}");
+            }
+
+            // 5. Advanced XOR detection
+            if (Regex.IsMatch(line, @"\b\w+\s*\^\s*0x[0-9A-Fa-f]{1,2}\b"))
+                findings.Add("XOR operation: value ^ hex constant");
+
+            if (Regex.IsMatch(line, @"\b\w+\s*\^\s*\w+\b"))
+                findings.Add("XOR operation: variable ^ variable");
+
+            if (Regex.IsMatch(line, @"\bfor\s*\(.*\)\s*.*\^="))
+                findings.Add("XOR loop detected (for)");
+
+            if (Regex.IsMatch(line, @"\bwhile\s*\(.*\)\s*.*\^="))
+                findings.Add("XOR loop detected (while)");
+
+            if (Regex.IsMatch(line, @"xor\s*(key|decrypt|decode|payload)", RegexOptions.IgnoreCase))
+                findings.Add("XOR keyword: decrypt/decode/payload");
+
+            if (Regex.IsMatch(line, @"0x[0-9A-Fa-f]{2}"))
+                findings.Add("Hex constant detected (possible XOR key)");
+
+            if (Regex.IsMatch(line, @"[A-Za-z0-9+/]{12,}={0,2}.*\^"))
+                findings.Add("Base64 + XOR hybrid obfuscation");
 
             return findings;
         }
